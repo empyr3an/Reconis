@@ -6,19 +6,39 @@ Reconis is a tool designed to automate the network enumeration and reconnaissanc
 ## About the Name
 The name "Reconis" is a blend of "Recon" (short for reconnaissance) and "Kronos" (inspired by the Greek god of time). It symbolizes a tool that helps save time during the reconnaissance process.
 
-## Features
+## Features of Reconis:
+1. Automated Nmap Scans (TCP and UDP):
+   Reconis automates both quick and detailed Nmap scans. It handles TCP and UDP scans, and you can choose to output results in XML format for further analysis. It also identifies and logs any errors during scanning, so you know exactly what went wrong if something doesn’t work as expected.
+   
+2. Vulnerability Scanning:
+   After identifying open ports, Reconis can run Nmap’s vulnerability scripts (`-sV --script=vuln`) on those ports to check for known issues. The output is cleaned and saved to a file, making it easy to review later.
+   
+3. Searchsploit Integration:
+   The tool integrates with Searchsploit to automatically map discovered services to known vulnerabilities. It processes the JSON output from Searchsploit, filters relevant exploits, and logs them for each service. If Searchsploit doesn't find any exploits, the tool will indicate this in the results.
+   
+4. /etc/hosts Management:
+   Reconis automatically updates the `/etc/hosts` file with domains discovered during scans. Before adding entries, it checks for duplicates to keep the file clean. It extracts domain names and hostnames from the Nmap output and adds them to the hosts file, ensuring proper resolution during further testing.
+   
+5. Enum4linux Support:
+   For Windows environments, Reconis can automate the use of Enum4linux to enumerate SMB shares, users, and other details. The output is cleaned of ANSI escape sequences for readability and is saved for easy reference.
+   
+6. Domain Scoring (Experimental):
+   This feature scores domains based on HTTP headers and status codes to help prioritize which ones might be worth a closer look. It uses a curl command to inspect HTTP responses, scoring domains based on factors like status codes, content length, and the presence of cookies. The best domain for further testing is selected automatically.
+   
+7. Feroxbuster Integration:
+   Reconis integrates with Feroxbuster to automate directory and file discovery on web servers. The tool customizes the file extensions based on the web server detected (e.g., PHP for Apache, ASPX for IIS). You can use the default wordlist provided or specify a custom one if you need something specific.
+   
+8. CherryTree Documentation:
+   All findings from Nmap scans, vulnerability scans, and SMB enumeration are documented in a CherryTree format. The document is structured with nodes for scanning and enumeration, exploitation, and reporting. Each service and port has its own section, including notes, Searchsploit results, and vulnerability scan data.
+   
+9. Comprehensive Logging:
+   Every command executed by Reconis is logged, along with its output. This includes errors and any updates made to system files like `/etc/hosts`. The logging ensures transparency and makes troubleshooting easier.
+   
+10. Interactive Prompts:
+    The tool provides interactive prompts with validation and tab completion, making it user-friendly. You can choose whether to run certain tasks like Feroxbuster or vulnerability scans based on your needs. The prompts guide you through the process, but the script also allows for modifications if you want to customize the commands.
 
-- **Automated Nmap Scans**: Perform quick and detailed scans to identify open ports and services.
-- **TCP and UDP Support**: Flexibility to scan both TCP and UDP ports depending on your needs.
-- **Vulnerability Scanning**: Optionally run Nmap’s vulnerability scanning scripts to identify potential issues.
-- **Searchsploit Integration**: Map discovered services to known vulnerabilities for quick exploitation reference.
-- **/etc/hosts Management**: Automatically update the hosts file with domains extracted from scans to ensure smooth resolution.
-- **Enum4linux Support**: Automate SMB enumeration on Windows environments.
-- **Domain Scoring** (Experimental): A feature to prioritize domains based on HTTP headers and status codes for further testing.
-- **Feroxbuster Integration**: Discover hidden directories and files on web servers.
-- **CherryTree Documentation**: Generate structured reports in CherryTree format for easy documentation.
-- **Comprehensive Logging**: Logs all commands and outputs for transparency and troubleshooting.
-- **Interactive Prompts**: User-friendly prompts with validation and tab completion for ease of use.
+11. Tool Check and Installation:
+    Before starting, Reconis checks if required tools (like Nmap, Feroxbuster, Enum4linux) are installed. If any tools are missing, it informs you, so you can install them before proceeding.
 
 ## Installation
 
@@ -106,3 +126,6 @@ Reconis is provided under the following conditions:
 ## Disclaimer
 
 Reconis is provided as-is, without any warranty. Use it responsibly and only on systems where you have permission to do so.
+
+
+
