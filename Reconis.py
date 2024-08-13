@@ -438,6 +438,12 @@ def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_resu
     tcp_scan_node = create_cherrytree_node(scan_enum_node, "Full Nmap Scan (TCP)", text=detailed_scan_results)
     udp_scan_node = create_cherrytree_node(scan_enum_node, "Full Nmap Scan (UDP)", text=detailed_udp_scan_results)
 
+    # Add enum4linux results node at the same level as Nmap scans
+    if enum4linux_output:
+        clean_enum4linux_output = remove_ansi_escape_sequences(enum4linux_output)
+        enum4linux_text = f"Command Used: enum4linux -a {ip}\n\n{clean_enum4linux_output}"
+        create_cherrytree_node(scan_enum_node, "Enum4linux Results", text=enum4linux_text)
+
     for port, service, banner, version_info in open_ports:
         port_node = create_cherrytree_node(tcp_scan_node, f"Port {port} ({service})")
         port_node.find('rich_text').text = "Take notes here\n\n"
@@ -466,11 +472,6 @@ def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_resu
             create_cherrytree_node(port_node, "Nmap Vuln Scan", text=vuln_scan_text)
     else:
         udp_scan_node.find('rich_text').text = "No open UDP ports were found."
-
-    if enum4linux_output:
-        clean_enum4linux_output = remove_ansi_escape_sequences(enum4linux_output)
-        enum4linux_text = f"Command Used: enum4linux -a {ip}\n\n{clean_enum4linux_output}"
-        create_cherrytree_node(scan_enum_node, "Enum4linux Results", text=enum4linux_text)
 
     exploitation_node = create_cherrytree_node(main_node, "Exploitation")
     exploitation_node.find('rich_text').text = "Take Notes Here"
@@ -981,6 +982,8 @@ def main():
     run_nmap_vuln_scan = get_vuln_scan_option(default_all)
     run_searchsploit = run_nmap_scan and get_searchsploit_option(default_all)
 
+    run_enum4linux_scan = default_all or get_enum4linux_option()  # This line ensures enum4linux runs automatically when default_all is True
+
     futures = []
     with ProcessPoolExecutor(max_workers=4) as executor:
         if run_nmap_vuln_scan:
@@ -993,6 +996,8 @@ def main():
             futures.append(executor.submit(execute_searchsploit, xml_filename, 'tcp'))
             if not udp_error and run_nmap_scan:
                 futures.append(executor.submit(execute_searchsploit, udp_xml_filename, 'udp'))
+        if run_enum4linux_scan:
+            futures.append(executor.submit(run_enum4linux, ip))
 
         monitor_tasks(futures)
 
@@ -1000,8 +1005,13 @@ def main():
                                                          'searchsploit_tcp.json') if run_searchsploit else {}
     udp_port_vulnerabilities = map_searchsploit_to_ports(open_udp_ports,
                                                          'searchsploit_udp.json') if run_searchsploit else {}
+    enum4linux_output = None
+    if run_enum4linux_scan:
+        enum4linux_output = futures[-1].result()
+
     create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_results, detailed_udp_scan_results,
-                              filename, run_feroxbuster, tcp_port_vulnerabilities, udp_port_vulnerabilities)
+                              filename, run_feroxbuster, tcp_port_vulnerabilities, udp_port_vulnerabilities,
+                              enum4linux_output)
 
     # Reset terminal to ensure visibility of typed commands
     reset_terminal()
