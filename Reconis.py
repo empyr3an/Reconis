@@ -18,16 +18,22 @@ import time
 import atexit
 
 # Initialize logging for complete logs
-logging.basicConfig(filename='complete_logs.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+current_dir = os.getcwd()
+log_filepath = os.path.join(current_dir, 'complete_logs.log')
+logging.basicConfig(filename=log_filepath, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def log_command(command, command_type=""):
-    with open('commands_used.log', 'a') as file:
+    command_log_path = os.path.join(current_dir, 'commands_used.log')
+    with open(command_log_path, 'a') as file:
         file.write(f"=== {command_type} ===\n")
         file.write(command + '\n')
         file.write("-" * 25 + "\n")
 
+
 def log_complete(message):
     logging.info("\n" + "=" * 80 + "\n" + message + "\n" + "=" * 80 + "\n")
+
 
 def check_and_install_tools():
     tools = ["nmap", "feroxbuster", "gnome-terminal", "enum4linux"]
@@ -37,9 +43,11 @@ def check_and_install_tools():
         return False
     return True
 
+
 def extract_ip_address(nmap_output):
     match = re.search(r'Nmap scan report for (\S+)', nmap_output)
     return match.group(1) if match else "Unknown"
+
 
 def run_in_new_terminal(command):
     if platform.system() == "Windows":
@@ -48,6 +56,7 @@ def run_in_new_terminal(command):
         subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', f"{command}; exec bash"])
     elif platform.system() == "Darwin":
         subprocess.Popen(['open', '-a', 'Terminal', command])
+
 
 def handle_nmap_scan(ip, scan_options, protocol='tcp', output_xml=False):
     xml_filename = None
@@ -69,6 +78,7 @@ def handle_nmap_scan(ip, scan_options, protocol='tcp', output_xml=False):
 
     return stdout, xml_filename, bool(stderr)
 
+
 def extract_open_ports(nmap_output, protocol='tcp'):
     lines = nmap_output.splitlines()
     open_ports = []
@@ -81,9 +91,12 @@ def extract_open_ports(nmap_output, protocol='tcp'):
             open_ports.append((port, service, banner, line.strip()))
     return open_ports
 
+
 def save_results(output, filename):
-    with open(filename, 'w') as file:
+    filepath = os.path.join(current_dir, filename)
+    with open(filepath, 'w') as file:
         file.write(output)
+
 
 def create_cherrytree_node(parent, title, text=""):
     node = ET.SubElement(parent, 'node', custom_icon_id='1', foreground='', is_bold='False', name=title,
@@ -91,13 +104,14 @@ def create_cherrytree_node(parent, title, text=""):
     ET.SubElement(node, 'rich_text').text = text
     return node
 
+
 def determine_extensions(service_banner):
     extension_mapping = {
-        "apache": ["php", "html", "js", "css", "xml"], 
+        "apache": ["php", "html", "js", "css", "xml"],
         "nginx": ["html", "js", "css", "php"],
-        "iis": ["asp", "aspx", "html", "js", "css"], 
+        "iis": ["asp", "aspx", "html", "js", "css"],
         "wordpress": ["php", "html", "css", "js", "xml"],
-        "joomla": ["php", "html", "js"], 
+        "joomla": ["php", "html", "js"],
         "drupal": ["php", "html", "js"]
     }
     default_extensions = ["html", "php", "js"]
@@ -107,9 +121,11 @@ def determine_extensions(service_banner):
             selected_extensions.update(extensions)
     return list(selected_extensions)
 
+
 def is_http_service(service):
     http_indicators = ["http", "https", "nginx", "apache", "web", "www"]
     return any(indicator in service.lower() for indicator in http_indicators)
+
 
 # Define the directory path and default file for directory busting
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -117,6 +133,7 @@ DIR_BUSTING_FOLDER = os.path.join(SCRIPT_DIR, 'wordlists')
 DEFAULT_DIR_BUSTER_FILE = os.path.join(DIR_BUSTING_FOLDER, 'directory-list-2.3-medium.txt')
 
 domains_list = []
+
 
 def create_feroxbuster_command(ip, port, service_banner, custom_wordlist=None):
     best_domain = determine_best_domain(port, ip)
@@ -126,19 +143,21 @@ def create_feroxbuster_command(ip, port, service_banner, custom_wordlist=None):
     wordlist = custom_wordlist if custom_wordlist else DEFAULT_DIR_BUSTER_FILE
     return f"feroxbuster --url http://{best_domain}:{port} -w {wordlist} -x {extensions_string} -s {status_codes} -t 50 -r; exec bash"
 
+
 def display_help():
     help_text = """
-    Usage: python3 nmapscan.py [options] <filename>
+    Usage: python3 Reconis.py [options] <filename>
     Options:
     -h           Display this help message.
     -ns          Skip Nmap scanning and only generate CherryTree document from existing data (exact filename required).
     -no-fero     Skip running Feroxbuster in a new terminal.
     Example:
-    python3 nmapscan.py -ns Lame_fullscan.txt
-    python3 nmapscan.py 192.168.1.1 new_scan
+    python3 Reconis.py -ns Lame_fullscan.txt
+    python3 Reconis.py 192.168.1.1 new_scan
     """
     print(help_text)
     sys.exit(0)
+
 
 def process_nmap_file(data):
     port_details_regex = re.compile(r'^(\d+/tcp)')
@@ -178,6 +197,7 @@ def process_nmap_file(data):
 
     return cleaned_data
 
+
 def run_vuln_scan(ip, open_ports, filename, protocol='tcp'):
     if not open_ports:
         log_complete(f"No open {protocol} ports found. Skipping vulnerability scan.")
@@ -198,6 +218,7 @@ def run_vuln_scan(ip, open_ports, filename, protocol='tcp'):
 
     return parse_vuln_scan_output(cleaned_output)
 
+
 def parse_vuln_scan_output(data):
     ports_info = {}
     lines = data.split('\n')
@@ -215,6 +236,7 @@ def parse_vuln_scan_output(data):
         ports_info[port] = "\n".join(info_lines) if info_lines else "No vulnerability scan data"
 
     return ports_info
+
 
 def handle_scanning(ip, filename, protocol='tcp'):
     quickscan_options = "-T4 -Pn --open -p-"
@@ -238,7 +260,8 @@ def handle_scanning(ip, filename, protocol='tcp'):
     if protocol == 'udp':
         fullscan_options = f"-sU -A -T4 -p{','.join([port for port, _, _, _ in open_ports])}"
     print(f"Running detailed {protocol} scan on {len(open_ports)} open ports...", end='', flush=True)
-    detailed_scan_results, xml_filename, full_scan_error = handle_nmap_scan(ip, fullscan_options, protocol, output_xml=True)
+    detailed_scan_results, xml_filename, full_scan_error = handle_nmap_scan(ip, fullscan_options, protocol,
+                                                                            output_xml=True)
     if full_scan_error:
         print(f"Error encountered during detailed {protocol} scan. Check logs for details.")
         log_complete(f"Error encountered during detailed {protocol} scan.")
@@ -246,6 +269,7 @@ def handle_scanning(ip, filename, protocol='tcp'):
     print(f"\rDetailed {protocol} scan complete. Results saved in {filename}_fullscan_{protocol}.txt", flush=True)
 
     return detailed_scan_results, xml_filename, False
+
 
 def handle_udp_scan(ip, filename):
     quick_udp_options = "-sU -T4 --open --top-ports 100"
@@ -275,8 +299,10 @@ def handle_udp_scan(ip, filename):
 
     return full_udp_results, open_udp_ports
 
+
 def process_searchsploit_results(json_file):
-    with open(json_file, 'r') as file:
+    json_filepath = os.path.join(current_dir, json_file)
+    with open(json_filepath, 'r') as file:
         file_content = file.read().strip()
 
     json_objects = []
@@ -307,15 +333,17 @@ def process_searchsploit_results(json_file):
             titles = [exploit['Title'] for exploit in data['RESULTS_EXPLOIT']]
             filtered_data.append({'search_term': search_section, 'titles': titles})
 
-    with open(json_file, 'w') as file:
+    with open(json_filepath, 'w') as file:
         json.dump(filtered_data, file, indent=4)
 
+
 def map_searchsploit_to_ports(open_ports, searchsploit_results_file):
-    if not os.path.exists(searchsploit_results_file):
-        print(f"No Searchsploit data available in {searchsploit_results_file}")
+    searchsploit_filepath = os.path.join(current_dir, searchsploit_results_file)
+    if not os.path.exists(searchsploit_filepath):
+        print(f"No Searchsploit data available in {searchsploit_filepath}")
         return {port: {'service': service, 'exploits': 'No exploits found'} for port, service, _, _ in open_ports}
 
-    with open(searchsploit_results_file, 'r') as file:
+    with open(searchsploit_filepath, 'r') as file:
         searchsploit_data = json.load(file)
 
     port_vulnerabilities = {}
@@ -342,14 +370,16 @@ def map_searchsploit_to_ports(open_ports, searchsploit_results_file):
                     service_exploit_cache[service] = entry['titles']
                     break
 
-    with open(searchsploit_results_file, 'w') as file:
+    with open(searchsploit_filepath, 'w') as file:
         json.dump(port_vulnerabilities, file, indent=4)
 
     return port_vulnerabilities
 
+
 def extract_vuln_scan_host_scripts(filename):
     try:
-        with open(filename, 'r') as file:
+        filepath = os.path.join(current_dir, filename)
+        with open(filepath, 'r') as file:
             content = file.read()
         start = content.find('Host script results:')
         if start == -1:
@@ -365,19 +395,25 @@ def extract_vuln_scan_host_scripts(filename):
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
+
 def read_file(filename):
-    with open(filename, 'r') as file:
+    filepath = os.path.join(current_dir, filename)
+    with open(filepath, 'r') as file:
         return file.read()
+
 
 def remove_ansi_escape_sequences(text):
     ansi_escape = re.compile(r'(?:\x1B[@-_][0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
 
-def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_results, detailed_udp_scan_results, filename, run_feroxbuster, port_vulnerabilities, udp_port_vulnerabilities, enum4linux_output=None):
+
+def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_results, detailed_udp_scan_results,
+                              filename, run_feroxbuster, port_vulnerabilities, udp_port_vulnerabilities,
+                              enum4linux_output=None):
     print("-" * 50)
     print("Creating document structure...")
-    tcp_vuln_scan_filename = f"{filename}_tcp_vulnscan.txt"
-    udp_vuln_scan_filename = f"{filename}_udp_vulnscan.txt"
+    tcp_vuln_scan_filename = os.path.join(current_dir, f"{filename}_tcp_vulnscan.txt")
+    udp_vuln_scan_filename = os.path.join(current_dir, f"{filename}_udp_vulnscan.txt")
     if os.path.exists(tcp_vuln_scan_filename):
         tcp_host_scripts = extract_vuln_scan_host_scripts(tcp_vuln_scan_filename)
         tcp_vuln_scan_data = parse_vuln_scan_output(read_file(tcp_vuln_scan_filename))
@@ -407,7 +443,8 @@ def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_resu
         port_node.find('rich_text').text = "Take notes here\n\n"
 
         exploits_info = port_vulnerabilities.get(port, {}).get('exploits', [])
-        exploit_text = f"Version Info: {version_info}\n\n" + "Searchsploit Results:\n\n" + "\n".join(exploits_info) if exploits_info else "No exploits found in Searchsploit\n"
+        exploit_text = f"Version Info: {version_info}\n\n" + "Searchsploit Results:\n\n" + "\n".join(
+            exploits_info) if exploits_info else "No exploits found in Searchsploit\n"
         port_info_text = f"{exploit_text}"
 
         create_cherrytree_node(port_node, "Searchsploit", text=port_info_text)
@@ -420,7 +457,8 @@ def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_resu
             port_node.find('rich_text').text = "Take notes here\n\n"
 
             exploits_info = udp_port_vulnerabilities.get(port, {}).get('exploits', [])
-            exploit_text = f"Version Info: {version_info}\n\n" + "Searchsploit Results:\n\n" + "\n".join(exploits_info) if exploits_info else "No exploits found in Searchsploit\n"
+            exploit_text = f"Version Info: {version_info}\n\n" + "Searchsploit Results:\n\n" + "\n".join(
+                exploits_info) if exploits_info else "No exploits found in Searchsploit\n"
             port_info_text = f"{exploit_text}"
 
             create_cherrytree_node(port_node, "Searchsploit", text=port_info_text)
@@ -441,17 +479,20 @@ def create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_resu
     reporting_node.find('rich_text').text = "Take Notes Here"
 
     tree = ET.ElementTree(root)
-    cherrytree_filename = f"{filename}_structure.ctd"
+    cherrytree_filename = os.path.join(current_dir, f"{filename}_structure.ctd")
     tree.write(cherrytree_filename, encoding='utf-8', xml_declaration=True)
     print(f"CherryTree structure saved to {cherrytree_filename}")
     print("-" * 50)
 
+
 def setup_readline():
     def complete(text, state):
-        return (glob.glob(text+'*')+[None])[state]
+        return (glob.glob(text + '*') + [None])[state]
+
     readline.set_completer(complete)
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind("tab: complete")
+
 
 def get_ip_address():
     while True:
@@ -460,6 +501,7 @@ def get_ip_address():
             return ip
         else:
             print("Invalid IP address. Please try again.")
+
 
 def get_nmap_scan_option(default_all=False):
     if default_all:
@@ -470,6 +512,7 @@ def get_nmap_scan_option(default_all=False):
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
 
+
 def get_nmap_file_path():
     setup_readline()
     while True:
@@ -477,6 +520,7 @@ def get_nmap_file_path():
         if os.path.exists(file_path):
             return file_path
         print("Invalid file path. Please try again.")
+
 
 def get_feroxbuster_option(default_all=False):
     if default_all:
@@ -487,14 +531,17 @@ def get_feroxbuster_option(default_all=False):
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
 
+
 def get_feroxbuster_file_option(default_all=False):
     if default_all:
         return True
     while True:
-        choice = input(f"Do you want to use the default file for directory busting? (Make sure you have the wordlists directory downloaded) (y/n) : ").lower()
+        choice = input(
+            f"Do you want to use the default file for directory busting? (Make sure you have the wordlists directory downloaded) (y/n) : ").lower()
         if choice in ['y', 'n']:
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
+
 
 def get_feroxbuster_file_path():
     setup_readline()
@@ -503,6 +550,7 @@ def get_feroxbuster_file_path():
         if os.path.exists(file_path):
             return file_path
         print("Invalid file path. Please try again.")
+
 
 def get_vuln_scan_option(default_all=False):
     if default_all:
@@ -513,6 +561,7 @@ def get_vuln_scan_option(default_all=False):
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
 
+
 def get_udp_scan_option(default_all=False):
     if default_all:
         return True
@@ -521,6 +570,7 @@ def get_udp_scan_option(default_all=False):
         if choice in ['y', 'n']:
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
+
 
 def get_searchsploit_option(default_all=False):
     if default_all:
@@ -531,6 +581,7 @@ def get_searchsploit_option(default_all=False):
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
 
+
 def get_enum4linux_option():
     while True:
         choice = input("Do you want to run enum4linux? (y/n): ").lower()
@@ -538,11 +589,13 @@ def get_enum4linux_option():
             return choice == 'y'
         print("Invalid choice. Please enter 'y' or 'n'.")
 
+
 def spinner(task_name):
     spinner_chars = ['|', '/', '-', '\\']
     while True:
         for char in spinner_chars:
             yield f'\r{task_name}... {char}'
+
 
 def execute_feroxbuster(ip, open_ports, custom_wordlist):
     spinner_gen = spinner("Running Feroxbuster")
@@ -557,6 +610,7 @@ def execute_feroxbuster(ip, open_ports, custom_wordlist):
     spinner_thread.join()
     print("\rFeroxbuster scan complete.                      ")
 
+
 def execute_searchsploit(xml_filename, protocol='tcp'):
     spinner_gen = spinner(f"Running Searchsploit for {protocol}")
     spinner_thread = threading.Thread(target=show_spinner, args=(spinner_gen,))
@@ -569,6 +623,7 @@ def execute_searchsploit(xml_filename, protocol='tcp'):
     spinner_thread.do_run = False
     spinner_thread.join()
     print(f"\rSearchsploit analysis for {protocol} complete.")
+
 
 def run_enum4linux(ip):
     spinner_gen = spinner("Running enum4linux")
@@ -587,6 +642,7 @@ def run_enum4linux(ip):
         log_complete(f"Error during enum4linux scan: {stderr}")
     return stdout
 
+
 def run_vuln_scan_task(ip, open_ports, filename, protocol='tcp'):
     spinner_gen = spinner(f"Running {protocol} vulnerability scan")
     spinner_thread = threading.Thread(target=show_spinner, args=(spinner_gen,))
@@ -597,6 +653,7 @@ def run_vuln_scan_task(ip, open_ports, filename, protocol='tcp'):
     spinner_thread.join()
     print(f"\r{protocol.capitalize()} vulnerability scan complete.                      ")
     return result
+
 
 def show_spinner(spinner_gen):
     thread = threading.current_thread()
@@ -609,6 +666,7 @@ def show_spinner(spinner_gen):
         else:
             break
 
+
 def monitor_tasks(futures):
     for future in as_completed(futures):
         try:
@@ -617,20 +675,21 @@ def monitor_tasks(futures):
         except Exception as exc:
             print(f"Task generated an exception: {exc}")
 
+
 def determine_os(nmap_output):
     os_detection = re.search(r'OS details: (.+)', nmap_output)
     os_guesses = re.findall(r'OS CPE: (cpe:/o:[^:]+)', nmap_output)
     os_services = re.findall(r'^\d+/tcp\s+open\s+[^\s]+\s+(.+)$', nmap_output, re.MULTILINE)
     os_detailed = re.search(r'Aggressive OS guesses: (.+)', nmap_output)
-    
+
     os_keywords = {
         'linux': ['linux', 'ubuntu', 'debian', 'centos', 'fedora', 'red hat', 'kali'],
         'windows': ['windows', 'microsoft']
     }
-    
+
     os_type = None
     os_version = "Unknown"
-    
+
     if os_detection:
         detected_os = os_detection.group(1).lower()
         os_version = os_detection.group(1)
@@ -638,7 +697,7 @@ def determine_os(nmap_output):
             if any(keyword in detected_os for keyword in keywords):
                 os_type = os_key
                 break
-    
+
     if not os_type and os_guesses:
         for guess in os_guesses:
             for os_key, keywords in os_keywords.items():
@@ -646,7 +705,7 @@ def determine_os(nmap_output):
                     os_type = os_key
                     os_version = guess
                     break
-    
+
     if not os_type and os_detailed:
         detailed_os = os_detailed.group(1).lower()
         os_version = os_detailed.group(1)
@@ -654,7 +713,7 @@ def determine_os(nmap_output):
             if any(keyword in detailed_os for keyword in keywords):
                 os_type = os_key
                 break
-    
+
     if not os_type:
         for service in os_services:
             service_lower = service.lower()
@@ -662,27 +721,28 @@ def determine_os(nmap_output):
                 if any(keyword in service_lower for keyword in keywords):
                     os_type = os_key
                     break
-    
+
     return os_type, os_version
+
 
 def extract_hosts_info(nmap_output):
     ip_address = re.search(r'Nmap scan report for (\S+)', nmap_output)
     if ip_address:
         ip_address = ip_address.group(1)
-    
+
     os_type, os_version = determine_os(nmap_output)
-    
+
     domain_name = re.search(r'DNS_Domain_Name: (\S+)', nmap_output)
     computer_name = re.search(r'DNS_Computer_Name: (\S+)', nmap_output)
-    
+
     netbios_domain_name = re.search(r'NetBIOS_Domain_Name: (\S+)', nmap_output)
     netbios_computer_name = re.search(r'NetBIOS_Computer_Name: (\S+)', nmap_output)
-    
+
     hostnames = {}
-    
+
     if domain_name:
         hostnames[domain_name.group(1).lower()] = "Domain Name"
-    
+
     if computer_name:
         full_dns_name = computer_name.group(1).lower()
         if not full_dns_name.endswith(domain_name.group(1).lower()):
@@ -694,13 +754,15 @@ def extract_hosts_info(nmap_output):
         netbios_entry = f"{netbios_computer_name.group(1).lower()}.{netbios_domain_name.group(1).lower()}"
         hostnames[netbios_entry] = "NetBIOS FQDN"
         hostnames[netbios_computer_name.group(1)] = "NetBIOS Name"
-    
+
     return os_type, os_version, ip_address, hostnames
+
 
 def extract_redirects(nmap_output):
     redirects = re.findall(r'Did not follow redirect to (http[s]?://\S+)', nmap_output)
     redirect_hostnames = [re.sub(r'^http[s]?://', '', redirect).split('/')[0] for redirect in redirects]
     return redirect_hostnames
+
 
 def extract_domains_from_hosts(ip_address):
     domains = []
@@ -713,52 +775,55 @@ def extract_domains_from_hosts(ip_address):
                         domains.append(entry)
     return domains
 
+
 def update_hosts_file_from_nmap_output(ip_address, nmap_output_file):
     global domains_list
     try:
-        with open(nmap_output_file, 'r') as file:
+        nmap_output_filepath = os.path.join(current_dir, nmap_output_file)
+        with open(nmap_output_filepath, 'r') as file:
             nmap_output = file.read()
     except FileNotFoundError:
         print(f"Error: File {nmap_output_file} not found.")
         sys.exit(1)
-    
+
     os_type, os_version, _, hostnames = extract_hosts_info(nmap_output)
     redirect_hostnames = extract_redirects(nmap_output)
-    
+
     # Combine hostnames and remove duplicates
     all_hostnames = list(hostnames.keys()) + redirect_hostnames
     unique_hostnames = list(dict.fromkeys(all_hostnames))
-    
+
     if ip_address and unique_hostnames:
         # Store unique hostnames for later use
         domains_list = unique_hostnames
-        
+
         # Read the current contents of /etc/hosts
         try:
             with open("/etc/hosts", "r") as hosts_file:
                 current_hosts = hosts_file.readlines()
         except FileNotFoundError:
             current_hosts = []
-        
+
         # Check all occurrences of the IP address
         ip_indices = [i for i, line in enumerate(current_hosts) if line.startswith(ip_address)]
         existing_hostnames = set()
-        
+
         for index in ip_indices:
             existing_hostnames.update(current_hosts[index].strip().split()[1:])
-        
+
         missing_hostnames = [hostname for hostname in unique_hostnames if hostname not in existing_hostnames]
-        
+
         if missing_hostnames:
             if ip_indices:
-                current_hosts[ip_indices[0]] = current_hosts[ip_indices[0]].strip() + " " + " ".join(missing_hostnames) + "\n"
+                current_hosts[ip_indices[0]] = current_hosts[ip_indices[0]].strip() + " " + " ".join(
+                    missing_hostnames) + "\n"
             else:
                 new_entry = f"{ip_address} " + " ".join(unique_hostnames) + "\n"
                 current_hosts.append(new_entry)
-            
+
             with open("/etc/hosts", "w") as hosts_file:
                 hosts_file.writelines(current_hosts)
-            
+
             print("-" * 50)
             print(f"Added the following entries to /etc/hosts: {', '.join(missing_hostnames)}")
             log_command(f"Added the following entries to /etc/hosts: {', '.join(missing_hostnames)}", "Hosts Update")
@@ -773,6 +838,7 @@ def update_hosts_file_from_nmap_output(ip_address, nmap_output_file):
 
     # Extract all domains associated with the IP from /etc/hosts
     domains_list.extend(extract_domains_from_hosts(ip_address))
+
 
 def score_domain(domain, port, ip):
     url = f"http://{domain}:{port}"
@@ -813,7 +879,7 @@ def score_domain(domain, port, ip):
             if line.lower().startswith("content-length:"):
                 content_length = int(line.split()[1])
                 break
-        
+
         if content_length:
             if content_length > 1000:
                 score += 20
@@ -854,10 +920,10 @@ def determine_best_domain(port, ip):
         return best_domain
 
 
-
 def reset_terminal():
     os.system('stty sane')
     os.system('stty erase "^h"')
+
 
 def main():
     # Register the terminal reset function to be called on exit
@@ -914,7 +980,7 @@ def main():
 
     run_nmap_vuln_scan = get_vuln_scan_option(default_all)
     run_searchsploit = run_nmap_scan and get_searchsploit_option(default_all)
-    
+
     futures = []
     with ProcessPoolExecutor(max_workers=4) as executor:
         if run_nmap_vuln_scan:
@@ -927,16 +993,19 @@ def main():
             futures.append(executor.submit(execute_searchsploit, xml_filename, 'tcp'))
             if not udp_error and run_nmap_scan:
                 futures.append(executor.submit(execute_searchsploit, udp_xml_filename, 'udp'))
-        
+
         monitor_tasks(futures)
 
-    tcp_port_vulnerabilities = map_searchsploit_to_ports(open_ports, 'searchsploit_tcp.json') if run_searchsploit else {}
-    udp_port_vulnerabilities = map_searchsploit_to_ports(open_udp_ports, 'searchsploit_udp.json') if run_searchsploit else {}
-    create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_results, detailed_udp_scan_results, filename, run_feroxbuster, tcp_port_vulnerabilities, udp_port_vulnerabilities)
+    tcp_port_vulnerabilities = map_searchsploit_to_ports(open_ports,
+                                                         'searchsploit_tcp.json') if run_searchsploit else {}
+    udp_port_vulnerabilities = map_searchsploit_to_ports(open_udp_ports,
+                                                         'searchsploit_udp.json') if run_searchsploit else {}
+    create_document_structure(ip, open_ports, open_udp_ports, detailed_scan_results, detailed_udp_scan_results,
+                              filename, run_feroxbuster, tcp_port_vulnerabilities, udp_port_vulnerabilities)
 
     # Reset terminal to ensure visibility of typed commands
     reset_terminal()
 
+
 if __name__ == "__main__":
     main()
-
