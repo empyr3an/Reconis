@@ -26,7 +26,7 @@ To get started with Reconis, follow these steps:
 
 1. **Clone the Repository**:
     ```bash
-    git clone https://github.com/yourusername/Reconis.git
+    git clone https://github.com/empyr3an/Reconis.git
     cd Reconis
     ```
 
