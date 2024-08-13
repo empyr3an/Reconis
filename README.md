@@ -51,7 +51,7 @@ There are two methods to run Reconis globally, allowing you to execute it from a
     - This method allows you to run the script globally without moving it, keeping the `wordlists` directory in the same location as the script.
     ```bash
     sudo ln -s /path/to/your/Reconis.py /usr/local/bin/reconis
-    sudo chmod +x /usr/local/bin/reconis
+    sudo chmod +x /path/to/your/Reconis.py
     ```
     - Replace `/path/to/your/Reconis.py` with the actual path to the `Reconis.py` file.
 
